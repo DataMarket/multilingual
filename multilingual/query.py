@@ -10,7 +10,7 @@ import datetime
 from django.core.exceptions import FieldError
 from django.db import connection
 from django.db.models.fields import FieldDoesNotExist
-from django.db.models.query import QuerySet, Q
+from django.db.models.query import QuerySet, Q, ValuesQuerySet
 from django.db.models.sql.query import Query
 from django.db.models.sql.datastructures import (
     EmptyResultSet,
@@ -580,7 +580,50 @@ class MultilingualModelQuerySet(QuerySet):
             return super(MultilingualModelQuerySet, self).order_by(*field_names)
 
     def values(self, *fields):
-        raise NotImplementedError
+        if hasattr(self.model._meta, 'translation_model'):
+            extra_select = {}
+            trans_opts = self.model._meta.translation_model._meta
+            trans_table_name = trans_opts.db_table
+            qn2 = self.query.connection.ops.quote_name
+
+            for field_name in fields:
+                field_and_lang = trans_opts.translated_fields.get(field_name)
+                if field_and_lang:
+                    field, language_id = field_and_lang
+                    if language_id is None:
+                        language_id = getattr(self, '_default_language', None)
+                    table_alias = get_translation_table_alias(trans_table_name,
+                        language_id)
+                    extra_select[field_name] = qn2(table_alias) + '.' + qn2(field.attname)
+            
+            # this maps columns to required field_names
+            result = self.extra(select = extra_select)
+            # and it returns MultilingualModelQuerySet instance, so we have to super it
+            return super(MultilingualModelQuerySet, result).values(*fields)
+        else:
+            return super(MultilingualModelQuerySet, self).values(*fields) 
 
     def values_list(self, *fields, **kwargs):
-        raise NotImplementedError
+        if hasattr(self.model._meta, 'translation_model'):
+            extra_select = {}
+            trans_opts = self.model._meta.translation_model._meta
+            trans_table_name = trans_opts.db_table
+            qn2 = self.query.connection.ops.quote_name
+
+            for field_name in fields:
+                field_and_lang = trans_opts.translated_fields.get(field_name)
+                if field_and_lang:
+                    field, language_id = field_and_lang
+                    if language_id is None:
+                        language_id = getattr(self, '_default_language', None)
+                    table_alias = get_translation_table_alias(trans_table_name,
+                        language_id)
+                    extra_select[field_name] = qn2(table_alias) + '.' + qn2(field.attname)
+            
+            # this maps columns to required field_names
+            result = self.extra(select = extra_select)
+            # and it return MultilingualModelQuerySet instance, so we have to super it
+            return super(MultilingualModelQuerySet, result).values_list(*fields, **kwargs)
+        else:
+            return super(MultilingualModelQuerySet, self).values_list(*fields, **kwargs) 
+
