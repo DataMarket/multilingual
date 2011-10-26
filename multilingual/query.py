@@ -508,7 +508,7 @@ class MultilingualQuery(Query):
     def get_count(self):
         # optimize for the common special case: count without any
         # filters
-        if ((not (self.select or self.where or self.extra_where))
+        if ((not (self.select or self.where))
             and self.include_translation_data):
             obj = self.clone(extra_select = {},
                              extra_join = {},
