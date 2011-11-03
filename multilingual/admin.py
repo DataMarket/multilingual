@@ -199,7 +199,7 @@ def multilingual_modeladmin_new(cls, model, admin_site, obj=None):
                 cls.inlines = type(cls.inlines)((translation_modeladmin,)) + cls.inlines
             else:
                 cls.inlines = [translation_modeladmin]
-    return admin.ModelAdmin._original_new_before_dm(cls, model, admin_site, obj)
+    return admin.ModelAdmin._original_new_before_dm(cls)
 
 
 def install_multilingual_modeladmin_new():
